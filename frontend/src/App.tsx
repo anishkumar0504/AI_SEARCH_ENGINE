@@ -1,3 +1,6 @@
+// App.tsx — replace the whole file
+
+import { useEffect } from "react";
 import { useAuth } from "./hooks/useAuth";
 import { useSearch } from "./hooks/useSearch";
 import { Auth } from "./components/Auth";
@@ -20,6 +23,32 @@ export default function App() {
     newSearch,
   } = useSearch(token);
 
+  // On mount, check if URL has a conversation ID and load it
+  useEffect(() => {
+    if (!token) return;
+    const match = window.location.pathname.match(/^\/c\/(.+)$/);
+    if (match) {
+      loadConversation(match[1]);
+    }
+  }, [token]);
+
+  // When conversation changes, update the URL
+  useEffect(() => {
+    if (state.conversationId) {
+      window.history.pushState({}, "", `/c/${state.conversationId}`);
+    }
+  }, [state.conversationId]);
+
+  const handleNewSearch = () => {
+    window.history.pushState({}, "", "/");
+    newSearch();
+  };
+
+  const handleSelectConversation = (id: string) => {
+    window.history.pushState({}, "", `/c/${id}`);
+    loadConversation(id);
+  };
+
   if (authLoading) {
     return (
       <div className="app-loading">
@@ -28,9 +57,7 @@ export default function App() {
     );
   }
 
-  if (!user) {
-    return <Auth />;
-  }
+  if (!user) return <Auth />;
 
   const name =
     user.user_metadata?.full_name ||
@@ -46,11 +73,10 @@ export default function App() {
         loading={loadingConversations}
         activeConversationId={state.conversationId}
         user={user}
-        onSelectConversation={loadConversation}
+        onSelectConversation={handleSelectConversation}
         onDeleteConversation={removeConversation}
-        onNewSearch={newSearch}
+        onNewSearch={handleNewSearch}
         onSignOut={signOut}
-        onLoad={fetchConversations}
       />
 
       <main className="main-content">
@@ -62,6 +88,7 @@ export default function App() {
             followUps={state.followUps}
             loading={state.loading}
             error={state.error}
+            allMessages={state.allMessages}
             onFollowUp={followUp}
           />
         ) : (

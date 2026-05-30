@@ -39,9 +39,9 @@ export function Sidebar({
   onSignOut,
   onLoad,
 }: SidebarProps) {
-  useEffect(() => {
-    onLoad();
-  }, []);
+//   useEffect(() => {
+//     onLoad();
+//   }, []);
 
   const name =
     user?.user_metadata?.full_name ||

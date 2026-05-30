@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import type { Source } from "../lib/api";
 import { SearchBar } from "./SearchBar";
 
+// Add to props interface:
 interface ResultViewProps {
   query: string;
   answer: string;
@@ -9,9 +10,12 @@ interface ResultViewProps {
   followUps: string[];
   loading: boolean;
   error: string | null;
+  allMessages: ChatMessage[];   // ADD THIS
   onFollowUp: (query: string) => void;
 }
 
+// Import ChatMessage at the top:
+import type { ChatMessage } from "../hooks/useSearch";
 function SourceCard({ source, index }: { source: Source; index: number }) {
   let hostname = "";
   try {
@@ -129,6 +133,8 @@ export function ResultView({
   followUps,
   loading,
   error,
+    allMessages, // ADD THIS
+
   onFollowUp,
 }: ResultViewProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -138,105 +144,101 @@ export function ResultView({
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [answer, sources]);
 
-  return (
-    <div className="result-view">
-      {/* Query header */}
-      <div className="result-query">
-        <span className="result-query-icon">⬡</span>
-        <h1 className="result-query-text">{query}</h1>
-      </div>
-
-      <div className="result-layout">
-        {/* Main answer column */}
-        <div className="result-main">
-          {/* Sources row — show while loading too if we have them */}
-          {sources.length > 0 && (
-            <div className="sources-section">
-              <div className="sources-label">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
-                  <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-                </svg>
-                Sources
+ // Inside ResultView, replace the return with this:
+return (
+  <div className="result-view">
+    {/* Render full conversation thread */}
+    {allMessages.map((msg, i) => (
+      <div key={i}>
+        {msg.role === "USER" ? (
+          <div className="result-query">
+            <span className="result-query-icon">⬡</span>
+            <h2 className="result-query-text">{msg.content}</h2>
+          </div>
+        ) : (
+          <div className="result-layout">
+            <div className="result-main">
+              {msg.sources && msg.sources.length > 0 && (
+                <div className="sources-section">
+                  <div className="sources-label">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
+                      <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+                    </svg>
+                    Sources
+                  </div>
+                  <div className="sources-grid">
+                    {msg.sources.map((s, j) => <SourceCard key={j} source={s} index={j} />)}
+                  </div>
+                </div>
+              )}
+              <div className="answer-section">
+                <div className="answer-label">
+                  <span className="answer-label-dot" />
+                  Answer
+                </div>
+                <div className="answer-body">{renderAnswer(msg.content)}</div>
               </div>
-              <div className="sources-grid">
-                {sources.map((s, i) => (
-                  <SourceCard key={i} source={s} index={i} />
-                ))}
-              </div>
+              {/* Only show follow-ups on last assistant message */}
+              {i === allMessages.length - 1 && msg.followUps && msg.followUps.length > 0 && !loading && (
+                <div className="followups-section">
+                  <div className="followups-label">Related</div>
+                  <div className="followups-list">
+                    {msg.followUps.map((q, j) => (
+                      <button key={j} className="followup-btn" onClick={() => onFollowUp(q)}>
+                        <span className="followup-arrow">→</span>{q}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          )}
+          </div>
+        )}
+      </div>
+    ))}
 
-          {/* Answer */}
+    {/* Currently streaming answer */}
+    {loading && (
+      <div className="result-layout">
+        <div className="result-main">
           <div className="answer-section">
             <div className="answer-label">
               <span className="answer-label-dot" />
               Answer
             </div>
-
-            {error && (
-              <div className="answer-error">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-                  <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
-                </svg>
-                {error}
-              </div>
-            )}
-
-            {loading && !answer && (
+            {!answer && (
               <div className="answer-thinking">
-                <span className="thinking-dot" />
-                <span className="thinking-dot" />
-                <span className="thinking-dot" />
+                <span className="thinking-dot" /><span className="thinking-dot" /><span className="thinking-dot" />
               </div>
             )}
-
             {answer && (
               <div className="answer-body">
                 {renderAnswer(answer)}
-                {loading && <span className="answer-cursor" />}
+                <span className="answer-cursor" />
               </div>
             )}
           </div>
-
-          {/* Follow-up questions */}
-          {followUps.length > 0 && !loading && (
-            <div className="followups-section">
-              <div className="followups-label">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                </svg>
-                Related
-              </div>
-              <div className="followups-list">
-                {followUps.map((q, i) => (
-                  <button
-                    key={i}
-                    className="followup-btn"
-                    onClick={() => onFollowUp(q)}
-                  >
-                    <span className="followup-arrow">→</span>
-                    {q}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Follow-up search bar */}
-          {!loading && (answer || error) && (
-            <div className="followup-input-section">
-              <SearchBar
-                onSearch={onFollowUp}
-                loading={loading}
-                placeholder="Ask a follow-up..."
-                autoFocus={false}
-              />
-            </div>
-          )}
-
-          <div ref={bottomRef} />
         </div>
       </div>
-    </div>
-  );
+    )}
+
+    {error && (
+      <div className="answer-error">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+          <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+        {error}
+      </div>
+    )}
+
+    {/* Follow-up input — always visible when not loading */}
+    {!loading && (
+      <div className="followup-input-section">
+        <SearchBar onSearch={onFollowUp} loading={loading} placeholder="Ask a follow-up..." />
+      </div>
+    )}
+
+    <div ref={bottomRef} />
+  </div>
+);
 }
