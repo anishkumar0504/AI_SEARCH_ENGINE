@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
   output   = "../generated/prisma"
@@ -13,37 +8,49 @@ datasource db {
   url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
-model User{
-  id Int @id  @default(autoincrement())
-name String 
-email String @unique
-provider AuthProvider
-conversations Conversation[]
 
+model User {
+  id            String         @id  // Supabase UUID comes as string
+  name          String
+  email         String         @unique
+  provider      AuthProvider
+  conversations Conversation[]
 }
 
 enum AuthProvider {
-  GitHub 
+  GitHub
   Google
 }
 
 model Conversation {
-  id Int @id @default(autoincrement())
-  title String
-  messages Message[]
-  userId Int
-  user User @relation(fields: [userId], references: [id])
+  id        String    @id @default(cuid())
+  title     String
+  messages  Message[]
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  createdAt DateTime  @default(now())
 }
 
 model Message {
-  id Int @id @default(autoincrement())
-  content String
-  conversation Conversation @relation(fields: [conversationId], references: [id])
-  conversationId Int
-  createdAt DateTime @default(now())
-  role MessageRole
+  id             String       @id @default(cuid())
+  content        String
+  sources        Json?        // store sources array here
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  conversationId String
+  createdAt      DateTime     @default(now())
+  role           MessageRole
 }
+
 enum MessageRole {
   USER
   ASSISTANT
+}
+
+// Cache table so same queries don't hit Tavily again
+model SearchCache {
+  id        String   @id @default(cuid())
+  query     String   @unique  // exact query string as key
+  results   Json     // stored Tavily results
+  createdAt DateTime @default(now())
+  expiresAt DateTime // we check this before using cache
 }

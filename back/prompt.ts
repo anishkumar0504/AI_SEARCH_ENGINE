@@ -52,3 +52,19 @@ export const PROMPT_TEMPLATE = `
 ## USER_QUERY
 {USER_QUERY}
 `;
+
+export const FOLLOWUP_PROMPT_TEMPLATE = `
+You are a helpful AI assistant like Perplexity.
+
+Here is the conversation so far:
+{CONVERSATION_HISTORY}
+
+The user is now asking a follow-up question: {USER_QUERY}
+
+Here are fresh web search results to help answer it:
+{WEB_SEARCH_RESULTS}
+
+Answer the follow-up question clearly. Keep in mind the context from the conversation above.
+Use the search results as your primary source of information.
+Be concise, accurate, and cite sources where helpful.
+`;

@@ -1,118 +1,331 @@
 import dotenv from "dotenv";
 dotenv.config();
-import express, { response } from 'express';
-import cors from 'cors';
-import  { tavily } from '@tavily/core';
-import { PROMPT_TEMPLATE, SYSTEM_PROMPT } from './prompt.js';
+
+import express from "express";
+import cors from "cors";
+import { tavily } from "@tavily/core";
+import { PROMPT_TEMPLATE, SYSTEM_PROMPT, FOLLOWUP_PROMPT_TEMPLATE } from "./prompt.js";
 import { GoogleGenAI } from "@google/genai";
-import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 import { prisma } from "./lib/prisma.js";
 import { middleware } from "./middleware.js";
 
-
-
-const client = tavily({ apiKey: process.env.TAVILY_API_KEY });
+const tavilyClient = tavily({ apiKey: process.env.TAVILY_API_KEY! });
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
 const app = express();
 app.use(cors());
 app.use(express.json());
-const port = 3000;
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-console.log(process.env.GEMINI_API_KEY)
-const ResponseSchema = z.object({
-  answer: z.string(),
-  followUps: z.array(z.string()),
-});
-type Response = z.infer<typeof ResponseSchema>;
 
+const PORT = process.env.PORT || 3000;
 
+// How long to keep cached search results (in milliseconds)
+// 1 hour = 60 * 60 * 1000
+const CACHE_TTL_MS = 60 * 60 * 1000;
 
-app.get("/conversation",middleware,async(req,res)=>{
-    res.json({
-        userId:req.userId,
-    })
-})
+// ─────────────────────────────────────────────
+// Helper: get search results, using DB cache
+// ─────────────────────────────────────────────
+async function getSearchResults(query: string) {
+  const now = new Date();
 
-app.post("/conversation/:conversationId",async(req,res)=>{
-    const {conversationId} = req.params;
-    const conversation = await prisma.conversation.findUnique({
-        where:{
-            id:conversationId
-        },
-        include:{
-            messages:true,
-        }
-    })
-    if(!conversation){
-        return res.status(404).json({error:"Conversation not found"})
-    }
-})
+  // Check if we have a fresh cache entry for this exact query
+  const cached = await prisma.searchCache.findUnique({
+    where: { query },
+  });
 
-app.post("/ask", async(req, res) => {
+  if (cached && cached.expiresAt > now) {
+    console.log("Cache hit for query:", query);
+    return cached.results as any[];
+  }
 
+  // No cache or expired — hit Tavily
+  console.log("Cache miss, calling Tavily for:", query);
+  const webSearchResponse = await tavilyClient.search(query, {
+    searchDepth: "advanced",
+  });
+  const results = webSearchResponse.results;
 
+  // Save/update cache
+  const expiresAt = new Date(now.getTime() + CACHE_TTL_MS);
+  await prisma.searchCache.upsert({
+    where: { query },
+    create: { query, results, expiresAt },
+    update: { results, expiresAt },
+  });
 
-// step1: to get the search query from the user
-const query = req.body.query;
-
-// step2: to check the token or credits of the user and decide whether to allow the search or not
-
-
-// step3: check if we have web search indexed to the similar query
-
-
-
-
-
-// step4: web search to gather sources 
-const webSearchResponse = await client.search(query,{
-searchDepth:"advanced"
-}) 
-const webSearchResult = webSearchResponse.results;
-// step5: to make the 
-
-// step6: hit the llm and stream the response back to the user
-
-const prompt = PROMPT_TEMPLATE
-                .replace("{WEB_SEARCH_RESULTS}", JSON.stringify(webSearchResult))
-                .replace("{USER_QUERY}", query);
-
-const stream = await ai.models.generateContentStream({
-  model: "gemini-2.5-flash",
-  contents: prompt,
-  config: {
-    systemInstruction: SYSTEM_PROMPT,
-  },
-});
-for await (const chunk of stream) {
-  res.write(chunk.text ?? "");
+  return results;
 }
-res.write("\n<SOURCES>\n")
 
-// step7: also stream the sources back to the user and follow up questions if any
-res.write(JSON.stringify(webSearchResult.map(result=>({url:result.url}))));
-// webSearchResult.forEach(results=>{
-//     res.write(JSON.stringify(results));
-// })
+// ─────────────────────────────────────────────
+// GET /conversations
+// Returns all conversations for the logged-in user
+// ─────────────────────────────────────────────
+app.get("/conversations", middleware, async (req, res) => {
+  try {
+    const conversations = await prisma.conversation.findMany({
+      where: { userId: req.userId },
+      orderBy: { createdAt: "desc" },
+      include: {
+        messages: {
+          orderBy: { createdAt: "asc" },
+          take: 1, // just the first message as a preview
+        },
+      },
+    });
 
-
-res.write("\n</SOURCES>\n")
-
-res.end();
-
-// step8: close
-
+    res.json({ conversations });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch conversations" });
+  }
 });
 
-app.post("/ask/followup",async(req,res)=>{
-    //Step1: to get the existing conversation from the db
-    //Step2: send all the history to the llm and get the follow up question
-    //Step3: stream the response back to user 
-})
+// ─────────────────────────────────────────────
+// GET /conversation/:conversationId
+// Returns a single full conversation with all messages
+// ─────────────────────────────────────────────
+app.get("/conversation/:conversationId", middleware, async (req, res) => {
+  try {
+    const { conversationId } = req.params;
 
-app.listen(port, () => {
-    console.log(`Server is running on http://localhost:${port}`);
+    const conversation = await prisma.conversation.findUnique({
+      where: { id: conversationId },
+      include: {
+        messages: {
+          orderBy: { createdAt: "asc" },
+        },
+      },
+    });
+
+    if (!conversation) {
+      return res.status(404).json({ error: "Conversation not found" });
+    }
+
+    // Make sure user owns this conversation
+    if (conversation.userId !== req.userId) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    res.json({ conversation });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch conversation" });
+  }
 });
 
+// ─────────────────────────────────────────────
+// POST /ask
+// Main search endpoint — streams AI answer + sources
+// Creates a new conversation and saves messages
+// ─────────────────────────────────────────────
+app.post("/ask", middleware, async (req, res) => {
+  try {
+    const query: string = req.body.query;
 
+    if (!query || query.trim() === "") {
+      return res.status(400).json({ error: "Query is required" });
+    }
+
+    // Set headers for streaming
+    res.setHeader("Content-Type", "text/plain");
+    res.setHeader("Transfer-Encoding", "chunked");
+    res.setHeader("Cache-Control", "no-cache");
+
+    // Step 1: Get web search results (from cache or Tavily)
+    const webSearchResults = await getSearchResults(query.trim());
+
+    // Step 2: Build prompt and stream LLM response
+    const prompt = PROMPT_TEMPLATE
+      .replace("{WEB_SEARCH_RESULTS}", JSON.stringify(webSearchResults))
+      .replace("{USER_QUERY}", query);
+
+    const stream = await ai.models.generateContentStream({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+      config: {
+        systemInstruction: SYSTEM_PROMPT,
+      },
+    });
+
+    // Collect the full answer as we stream it (so we can save to DB)
+    let fullAnswer = "";
+
+    for await (const chunk of stream) {
+      const text = chunk.text ?? "";
+      fullAnswer += text;
+      res.write(text);
+    }
+
+    // Step 3: Send sources at the end
+    const sources = webSearchResults.map((r) => ({ url: r.url, title: r.title }));
+    res.write("\n<SOURCES>\n");
+    res.write(JSON.stringify(sources));
+    res.write("\n</SOURCES>\n");
+    res.end();
+
+    // Step 4: Save conversation + messages to DB (after streaming, so it doesn't slow response)
+    const conversation = await prisma.conversation.create({
+      data: {
+        title: query.slice(0, 100), // use query as title, trimmed to 100 chars
+        userId: req.userId!,
+        messages: {
+          create: [
+            {
+              content: query,
+              role: "USER",
+            },
+            {
+              content: fullAnswer,
+              role: "ASSISTANT",
+              sources: sources,
+            },
+          ],
+        },
+      },
+    });
+
+    console.log("Saved conversation:", conversation.id);
+  } catch (err) {
+    console.error(err);
+    // If headers already sent (streaming started), we can't send JSON error
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Something went wrong" });
+    } else {
+      res.write("\n[Error occurred]");
+      res.end();
+    }
+  }
+});
+
+// ─────────────────────────────────────────────
+// POST /ask/followup
+// Follow-up question on an existing conversation
+// Streams answer using full conversation history as context
+// ─────────────────────────────────────────────
+app.post("/ask/followup", middleware, async (req, res) => {
+  try {
+    const { conversationId, query } = req.body;
+
+    if (!conversationId || !query) {
+      return res.status(400).json({ error: "conversationId and query are required" });
+    }
+
+    // Step 1: Load the existing conversation
+    const conversation = await prisma.conversation.findUnique({
+      where: { id: conversationId },
+      include: {
+        messages: {
+          orderBy: { createdAt: "asc" },
+        },
+      },
+    });
+
+    if (!conversation) {
+      return res.status(404).json({ error: "Conversation not found" });
+    }
+
+    if (conversation.userId !== req.userId) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    // Step 2: Get fresh search results for the follow-up query
+    const webSearchResults = await getSearchResults(query.trim());
+
+    // Step 3: Build conversation history string to give LLM context
+    const historyText = conversation.messages
+      .map((m) => `${m.role === "USER" ? "User" : "Assistant"}: ${m.content}`)
+      .join("\n\n");
+
+    // Step 4: Build prompt with history + new query
+    const prompt = FOLLOWUP_PROMPT_TEMPLATE
+      .replace("{CONVERSATION_HISTORY}", historyText)
+      .replace("{WEB_SEARCH_RESULTS}", JSON.stringify(webSearchResults))
+      .replace("{USER_QUERY}", query);
+
+    // Step 5: Stream the response
+    res.setHeader("Content-Type", "text/plain");
+    res.setHeader("Transfer-Encoding", "chunked");
+    res.setHeader("Cache-Control", "no-cache");
+
+    const stream = await ai.models.generateContentStream({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+      config: {
+        systemInstruction: SYSTEM_PROMPT,
+      },
+    });
+
+    let fullAnswer = "";
+    for await (const chunk of stream) {
+      const text = chunk.text ?? "";
+      fullAnswer += text;
+      res.write(text);
+    }
+
+    const sources = webSearchResults.map((r) => ({ url: r.url, title: r.title }));
+    res.write("\n<SOURCES>\n");
+    res.write(JSON.stringify(sources));
+    res.write("\n</SOURCES>\n");
+    res.end();
+
+    // Step 6: Save new messages to existing conversation
+    await prisma.message.createMany({
+      data: [
+        {
+          content: query,
+          role: "USER",
+          conversationId,
+        },
+        {
+          content: fullAnswer,
+          role: "ASSISTANT",
+          sources: sources,
+          conversationId,
+        },
+      ],
+    });
+  } catch (err) {
+    console.error(err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Something went wrong" });
+    } else {
+      res.write("\n[Error occurred]");
+      res.end();
+    }
+  }
+});
+
+// ─────────────────────────────────────────────
+// DELETE /conversation/:conversationId
+// Delete a conversation (and its messages via cascade)
+// ─────────────────────────────────────────────
+app.delete("/conversation/:conversationId", middleware, async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+
+    const conversation = await prisma.conversation.findUnique({
+      where: { id: conversationId },
+    });
+
+    if (!conversation) {
+      return res.status(404).json({ error: "Conversation not found" });
+    }
+
+    if (conversation.userId !== req.userId) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    // Delete messages first, then conversation
+    await prisma.message.deleteMany({ where: { conversationId } });
+    await prisma.conversation.delete({ where: { id: conversationId } });
+
+    res.json({ message: "Deleted successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to delete conversation" });
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+});
