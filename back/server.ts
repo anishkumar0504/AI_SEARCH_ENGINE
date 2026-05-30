@@ -8,10 +8,14 @@ import { GoogleGenAI } from "@google/genai";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { prisma } from "./lib/prisma.js";
+import { middleware } from "./middleware.js";
+
+
 
 const client = tavily({ apiKey: process.env.TAVILY_API_KEY });
 
 const app = express();
+app.use(cors());
 app.use(express.json());
 const port = 3000;
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -23,26 +27,28 @@ const ResponseSchema = z.object({
 type Response = z.infer<typeof ResponseSchema>;
 
 
-app.post("/signup",async(req,res)=>{
-})
 
-app.post("/signin",async(req,res)=>{
-})
-
-app.get("/conversation/history",async(req,res)=>{
+app.get("/conversation",middleware,async(req,res)=>{
+    res.json({
+        userId:req.userId,
+    })
 })
 
 app.post("/conversation/:conversationId",async(req,res)=>{
+    const {conversationId} = req.params;
+    const conversation = await prisma.conversation.findUnique({
+        where:{
+            id:conversationId
+        },
+        include:{
+            messages:true,
+        }
+    })
+    if(!conversation){
+        return res.status(404).json({error:"Conversation not found"})
+    }
 })
-const user = await prisma.user.create({
-  data: {
-    name: "manis11h",
-    email: "anish0102@gmail.com",
-    provider: "Google"
-  }
-});
 
-console.log(user);
 app.post("/ask", async(req, res) => {
 
 

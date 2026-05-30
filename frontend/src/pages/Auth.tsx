@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js"
+import { useNavigate } from "react-router-dom";
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -6,25 +7,24 @@ const supabase = createClient(
 )
 
 export default function Auth() {
-  async function login(provider: "google" | "github") {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-    })
+    const navigate = useNavigate();
+ async function login(provider: "google" | "github") {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider,
+    options: {
+      redirectTo: "http://localhost:5173/dashboard",
+    },
+  })
 
-console.log(import.meta.env.VITE_SUPABASE_URL);
-console.log(import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
-    if (error) {
-      console.error(error)
-      alert("Error logging in")
-    }
+  if (error) {
+    console.error(error)
   }
-
-  return (
+}
+return (
     <div>
       <button onClick={() => login("google")}>
         Login with Google
       </button>
-hello
 
 <h1 className="text-3xl font-bold underline">
     hiii

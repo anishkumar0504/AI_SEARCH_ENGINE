@@ -7,8 +7,8 @@ import Dashboard from './pages/Dashboard.tsx'
 createRoot(document.getElementById('root')!).render(
   <BrowserRouter>
     <Routes>
-      <Route path="/auth" element={<Auth />} />
-      <Route path="/conversation" element={<Dashboard />} />
+      <Route path="/" element={<Auth />} />
+      <Route path="/dashboard" element={<Dashboard />} />
     </Routes>
   </BrowserRouter>
 )
