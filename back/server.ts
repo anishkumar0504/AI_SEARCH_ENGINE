@@ -126,15 +126,12 @@ app.post("/ask", middleware, async (req, res) => {
       return res.status(400).json({ error: "Query is required" });
     }
 
-    // Set headers for streaming
     res.setHeader("Content-Type", "text/plain");
     res.setHeader("Transfer-Encoding", "chunked");
     res.setHeader("Cache-Control", "no-cache");
 
-    // Step 1: Get web search results (from cache or Tavily)
     const webSearchResults = await getSearchResults(query.trim());
 
-    // Step 2: Build prompt and stream LLM response
     const prompt = PROMPT_TEMPLATE
       .replace("{WEB_SEARCH_RESULTS}", JSON.stringify(webSearchResults))
       .replace("{USER_QUERY}", query);
@@ -147,7 +144,6 @@ app.post("/ask", middleware, async (req, res) => {
       },
     });
 
-    // Collect the full answer as we stream it (so we can save to DB)
     let fullAnswer = "";
 
     for await (const chunk of stream) {
@@ -156,17 +152,15 @@ app.post("/ask", middleware, async (req, res) => {
       res.write(text);
     }
 
-    // Step 3: Send sources at the end
     const sources = webSearchResults.map((r) => ({ url: r.url, title: r.title }));
     res.write("\n<SOURCES>\n");
     res.write(JSON.stringify(sources));
     res.write("\n</SOURCES>\n");
-    res.end();
 
-    // Step 4: Save conversation + messages to DB (after streaming, so it doesn't slow response)
+    // ✅ Save to DB BEFORE res.end() so we can send the ID back
     const conversation = await prisma.conversation.create({
       data: {
-        title: query.slice(0, 100), // use query as title, trimmed to 100 chars
+        title: query.slice(0, 100),
         userId: req.userId!,
         messages: {
           create: [
@@ -184,10 +178,14 @@ app.post("/ask", middleware, async (req, res) => {
       },
     });
 
+    // ✅ Send conversation ID so frontend can use it for follow-ups
+    res.write(`\n<CONV_ID>${conversation.id}</CONV_ID>\n`);
+
+    res.end();
+
     console.log("Saved conversation:", conversation.id);
   } catch (err) {
     console.error(err);
-    // If headers already sent (streaming started), we can't send JSON error
     if (!res.headersSent) {
       res.status(500).json({ error: "Something went wrong" });
     } else {
