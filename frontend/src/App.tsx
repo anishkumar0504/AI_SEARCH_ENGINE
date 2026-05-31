@@ -1,6 +1,4 @@
-// App.tsx — replace the whole file
-
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "./hooks/useAuth";
 import { useSearch } from "./hooks/useSearch";
 import { Auth } from "./components/Auth";
@@ -10,6 +8,7 @@ import { ResultView } from "./components/ResultView";
 
 export default function App() {
   const { user, token, loading: authLoading, signOut } = useAuth();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const {
     state,
@@ -39,11 +38,13 @@ export default function App() {
   }, [state.conversationId]);
 
   const handleNewSearch = () => {
+    setSidebarOpen(false);
     window.history.pushState({}, "", "/");
     newSearch();
   };
 
   const handleSelectConversation = (id: string) => {
+    setSidebarOpen(false);
     window.history.pushState({}, "", `/c/${id}`);
     loadConversation(id);
   };
@@ -67,6 +68,18 @@ export default function App() {
 
   return (
     <div className="app">
+      <button
+        className="sidebar-toggle"
+        onClick={() => setSidebarOpen(prev => !prev)}
+        aria-label="Toggle menu"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
+          <line x1="3" y1="6" x2="21" y2="6" />
+          <line x1="3" y1="12" x2="21" y2="12" />
+          <line x1="3" y1="18" x2="21" y2="18" />
+        </svg>
+      </button>
+
       <Sidebar
         conversations={conversations}
         loading={loadingConversations}
@@ -76,6 +89,8 @@ export default function App() {
         onDeleteConversation={removeConversation}
         onNewSearch={handleNewSearch}
         onSignOut={signOut}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
       />
 
       <main className="main-content">

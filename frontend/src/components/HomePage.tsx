@@ -52,4 +52,4 @@ export function HomePage({ onSearch, loading, userName }: HomePageProps) {
       </div>
     </div>
   );
-}   
+}

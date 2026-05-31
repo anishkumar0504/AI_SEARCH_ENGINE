@@ -44,6 +44,7 @@ textarea { font-family: var(--font); }
 .app {
   display: flex;
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
 }
 
@@ -52,6 +53,7 @@ textarea { font-family: var(--font); }
   align-items: center;
   justify-content: center;
   height: 100vh;
+  height: 100dvh;
   background: var(--bg);
 }
 
@@ -66,15 +68,58 @@ textarea { font-family: var(--font); }
   50% { opacity: 0.4; transform: scale(0.9); }
 }
 
+/* ── Sidebar toggle (mobile only) ──────────────────── */
+.sidebar-toggle {
+  display: none;
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  z-index: 300;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-2);
+  color: var(--text-2);
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.sidebar-toggle:hover {
+  background: var(--bg-3);
+  color: var(--text);
+  border-color: var(--border-2);
+}
+
+/* Overlay backdrop */
+.sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 250;
+  background: rgba(0,0,0,0.65);
+  opacity: 0;
+  transition: opacity 0.22s ease;
+  pointer-events: none;
+}
+
+.sidebar-backdrop.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 /* ── Auth page ──────────────────────────────────────── */
 .auth-page {
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--bg);
   position: relative;
   overflow: hidden;
+  padding: 24px 16px;
 }
 
 .auth-glow {
@@ -97,6 +142,7 @@ textarea { font-family: var(--font); }
   border-radius: var(--radius-lg);
   padding: 48px 40px;
   width: 380px;
+  max-width: 100%;
   text-align: center;
   box-shadow: 0 0 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03);
 }
@@ -145,6 +191,7 @@ textarea { font-family: var(--font); }
   font-weight: 500;
   transition: all 0.15s;
   border: 1px solid var(--border);
+  width: 100%;
 }
 
 .auth-btn--github {
@@ -177,11 +224,13 @@ textarea { font-family: var(--font); }
   width: var(--sidebar-w);
   min-width: var(--sidebar-w);
   height: 100vh;
+  height: 100dvh;
   background: var(--bg-2);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .sidebar-header {
@@ -190,6 +239,7 @@ textarea { font-family: var(--font); }
   justify-content: space-between;
   padding: 18px 16px 14px;
   border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
 }
 
 .sidebar-logo {
@@ -235,6 +285,7 @@ textarea { font-family: var(--font); }
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-3);
+  flex-shrink: 0;
 }
 
 .sidebar-conversations {
@@ -243,6 +294,7 @@ textarea { font-family: var(--font); }
   padding: 4px 8px;
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
+  -webkit-overflow-scrolling: touch;
 }
 
 .sidebar-conversations::-webkit-scrollbar { width: 4px; }
@@ -286,6 +338,7 @@ textarea { font-family: var(--font); }
   transition: background 0.12s;
   margin-bottom: 2px;
   gap: 6px;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .sidebar-item:hover {
@@ -344,6 +397,7 @@ textarea { font-family: var(--font); }
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  flex-shrink: 0;
 }
 
 .sidebar-user-info {
@@ -415,9 +469,11 @@ textarea { font-family: var(--font); }
 /* ── Main content ───────────────────────────────────── */
 .main-content {
   flex: 1;
+  min-width: 0;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
+  -webkit-overflow-scrolling: touch;
 }
 
 .main-content::-webkit-scrollbar { width: 4px; }
@@ -476,6 +532,7 @@ textarea { font-family: var(--font); }
   flex-wrap: wrap;
   gap: 8px;
   justify-content: center;
+  width: 100%;
 }
 
 .suggestion-chip {
@@ -487,6 +544,7 @@ textarea { font-family: var(--font); }
   font-size: 0.8rem;
   transition: all 0.15s;
   text-align: left;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .suggestion-chip:hover {
@@ -522,6 +580,7 @@ textarea { font-family: var(--font); }
   resize: none;
   max-height: 200px;
   line-height: 1.5;
+  min-width: 0;
 }
 
 .searchbar-input::placeholder {
@@ -539,6 +598,7 @@ textarea { font-family: var(--font); }
   justify-content: center;
   transition: all 0.15s;
   flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .searchbar-btn:hover:not(:disabled) {
@@ -591,6 +651,7 @@ textarea { font-family: var(--font); }
   letter-spacing: -0.025em;
   line-height: 1.3;
   color: var(--text);
+  word-break: break-word;
 }
 
 .result-layout {
@@ -607,8 +668,6 @@ textarea { font-family: var(--font); }
 }
 
 /* Sources */
-.sources-section {}
-
 .sources-label {
   display: flex;
   align-items: center;
@@ -637,6 +696,8 @@ textarea { font-family: var(--font); }
   padding: 9px 10px;
   transition: all 0.15s;
   overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  text-decoration: none;
 }
 
 .source-card:hover {
@@ -697,8 +758,6 @@ textarea { font-family: var(--font); }
 }
 
 /* Answer */
-.answer-section {}
-
 .answer-label {
   display: flex;
   align-items: center;
@@ -717,6 +776,7 @@ textarea { font-family: var(--font); }
   border-radius: 50%;
   background: var(--accent);
   box-shadow: 0 0 8px var(--accent);
+  flex-shrink: 0;
 }
 
 .answer-error {
@@ -757,6 +817,8 @@ textarea { font-family: var(--font); }
   color: var(--text);
   font-size: 0.95rem;
   line-height: 1.75;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .answer-p {
@@ -785,8 +847,6 @@ textarea { font-family: var(--font); }
   align-items: flex-start;
 }
 
-.answer-list-item--numbered {}
-
 .answer-list-num {
   color: var(--accent-2);
   font-family: var(--mono);
@@ -812,6 +872,7 @@ textarea { font-family: var(--font); }
   border-radius: 5px;
   padding: 1px 6px;
   color: var(--accent-2);
+  word-break: break-all;
 }
 
 .answer-spacer {
@@ -834,8 +895,6 @@ textarea { font-family: var(--font); }
 }
 
 /* Follow-ups */
-.followups-section {}
-
 .followups-label {
   display: flex;
   align-items: center;
@@ -866,6 +925,8 @@ textarea { font-family: var(--font); }
   font-size: 0.875rem;
   text-align: left;
   transition: all 0.15s;
+  width: 100%;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .followup-btn:hover {
@@ -878,6 +939,7 @@ textarea { font-family: var(--font); }
   color: var(--accent);
   font-size: 0.85rem;
   flex-shrink: 0;
+  margin-left: auto;
   transition: transform 0.15s;
 }
 
@@ -887,4 +949,389 @@ textarea { font-family: var(--font); }
 
 .followup-input-section {
   padding-top: 8px;
+}
+
+/* ══════════════════════════════════════════════════════
+   RESPONSIVE
+   xs  < 480px   small phones
+   sm  480–767px large phones / phablets
+   md  768–1023px tablets / small laptops
+   lg  1024px+   base styles above
+   ══════════════════════════════════════════════════════ */
+
+/* ── Tablet (≤ 1023px): sidebar becomes an overlay ─── */
+@media (max-width: 1023px) {
+
+  .sidebar-toggle {
+    display: flex;
+  }
+
+  .sidebar-backdrop {
+    display: block;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 260;
+    height: 100vh;
+    height: 100dvh;
+    transform: translateX(-100%);
+    transition: transform 0.26s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 8px 0 40px rgba(0,0,0,0.5);
+  }
+
+  .sidebar.is-open {
+    transform: translateX(0);
+  }
+
+  /* Full-width main, slight top pad so content isn't behind toggle */
+  .main-content {
+    width: 100%;
+  }
+
+  .home-page {
+    padding-top: 64px;
+  }
+
+  .result-view {
+    padding-top: 64px;
+  }
+}
+
+/* ── Large phone / small tablet (≤ 767px) ───────────── */
+@media (max-width: 767px) {
+
+  html, body, #root {
+    font-size: 14px;
+  }
+
+  /* Auth */
+  .auth-page {
+    align-items: flex-start;
+    padding-top: 48px;
+  }
+
+  .auth-glow {
+    width: 340px;
+    height: 340px;
+  }
+
+  .auth-card {
+    padding: 36px 28px;
+    width: 100%;
+    max-width: 440px;
+  }
+
+  .auth-tagline {
+    margin-bottom: 28px;
+  }
+
+  /* Home */
+  .home-page {
+    padding: 72px 20px 48px;
+    align-items: flex-start;
+  }
+
+  .home-content {
+    max-width: 100%;
+  }
+
+  .home-headline {
+    font-size: 1.9rem;
+    margin-bottom: 28px;
+  }
+
+  .home-searchbar {
+    margin-bottom: 20px;
+  }
+
+  .suggestion-chip {
+    font-size: 0.78rem;
+    padding: 7px 12px;
+  }
+
+  /* Searchbar */
+  .searchbar {
+    padding: 10px 10px 10px 14px;
+    border-radius: 14px;
+  }
+
+  .searchbar-input {
+    font-size: 0.9rem;
+  }
+
+  /* Result */
+  .result-view {
+    padding: 72px 20px 72px;
+  }
+
+  .result-query {
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+
+  .result-query-text {
+    font-size: 1.3rem;
+  }
+
+  .result-layout {
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* Sources 2-col on medium phones */
+  .sources-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Answers */
+  .answer-body {
+    font-size: 0.92rem;
+    line-height: 1.7;
+  }
+
+  .answer-h2 {
+    font-size: 1.05rem;
+  }
+
+  /* Follow-ups */
+  .followup-btn {
+    font-size: 0.84rem;
+    padding: 10px 12px;
+  }
+}
+
+/* ── Small phone (≤ 479px) ──────────────────────────── */
+@media (max-width: 479px) {
+
+  /* Auth edge-to-edge feel */
+  .auth-card {
+    padding: 32px 20px;
+    border-radius: 14px;
+  }
+
+  .auth-logo-text {
+    font-size: 1.3rem;
+  }
+
+  /* Sidebar fills whole screen width */
+  .sidebar {
+    width: 100vw;
+    min-width: unset;
+  }
+
+  .sidebar-toggle {
+    top: 12px;
+    left: 12px;
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+  }
+
+  /* Home */
+  .home-page {
+    padding: 64px 16px 40px;
+  }
+
+  .home-headline {
+    font-size: 1.55rem;
+    letter-spacing: -0.025em;
+    margin-bottom: 24px;
+  }
+
+  .home-greeting-text {
+    font-size: 0.85rem;
+  }
+
+  /* Suggestions stack full width */
+  .home-suggestions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .suggestion-chip {
+    text-align: center;
+    border-radius: 10px;
+    padding: 9px 14px;
+  }
+
+  /* Searchbar */
+  .searchbar {
+    padding: 9px 9px 9px 12px;
+    border-radius: 12px;
+    gap: 8px;
+  }
+
+  .searchbar-input {
+    font-size: 0.875rem;
+  }
+
+  .searchbar-btn {
+    width: 33px;
+    height: 33px;
+    border-radius: 9px;
+  }
+
+  /* Result */
+  .result-view {
+    padding: 60px 14px 64px;
+  }
+
+  .result-query-icon {
+    font-size: 1.1rem;
+  }
+
+  .result-query-text {
+    font-size: 1.15rem;
+    letter-spacing: -0.02em;
+  }
+
+  /* Sources: 1 col */
+  .sources-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .source-card {
+    padding: 8px 10px;
+  }
+
+  /* Answer */
+  .answer-body {
+    font-size: 0.9rem;
+  }
+
+  .answer-h2 {
+    font-size: 1rem;
+  }
+
+  .answer-h3 {
+    font-size: 0.95rem;
+  }
+
+  /* Follow-ups */
+  .followup-btn {
+    font-size: 0.82rem;
+    padding: 10px 11px;
+  }
+}
+
+/* ── Touch: always show delete btn, skip hover states ─ */
+@media (hover: none) {
+
+  .sidebar-delete-btn {
+    opacity: 1;
+    color: var(--text-3);
+  }
+
+  .source-arrow {
+    opacity: 0.45;
+  }
+
+  .searchbar-btn:hover:not(:disabled) {
+    transform: none;
+  }
+
+  .followup-btn:hover .followup-arrow {
+    transform: none;
+  }
+}
+
+/* ── Landscape phones ───────────────────────────────── */
+@media (max-width: 767px) and (orientation: landscape) {
+
+  .home-page {
+    padding-top: 56px;
+    padding-bottom: 32px;
+    min-height: auto;
+  }
+
+  .home-headline {
+    font-size: 1.5rem;
+    margin-bottom: 20px;
+  }
+
+  .auth-page {
+    padding-top: 36px;
+    padding-bottom: 24px;
+    align-items: flex-start;
+  }
+
+  .auth-card {
+    padding: 24px 24px;
+  }
+
+  .auth-tagline {
+    margin-bottom: 20px;
+  }
+
+  .auth-buttons {
+    margin-bottom: 18px;
+  }
+
+  .result-view {
+    padding-top: 56px;
+    padding-bottom: 56px;
+  }
+}
+
+/* ── Notch / home-bar safe areas ────────────────────── */
+@supports (padding: env(safe-area-inset-bottom)) {
+
+  .main-content {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .sidebar {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .sidebar-toggle {
+    top: calc(12px + env(safe-area-inset-top));
+    left: calc(12px + env(safe-area-inset-left));
+  }
+
+  .home-page {
+    padding-bottom: calc(48px + env(safe-area-inset-bottom));
+  }
+
+  .result-view {
+    padding-bottom: calc(80px + env(safe-area-inset-bottom));
+  }
+}
+
+/* ── Reduced motion ─────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+
+  .sidebar {
+    transition: none;
+  }
+
+  .sidebar-backdrop {
+    transition: none;
+  }
+
+  .thinking-dot,
+  .app-loading-icon,
+  .sidebar-skeleton,
+  .answer-cursor,
+  .searchbar-spinner {
+    animation: none;
+  }
+
+  .searchbar-btn:hover:not(:disabled) {
+    transform: none;
+  }
+
+  .followup-btn:hover .followup-arrow {
+    transform: none;
+  }
+
+  .source-card,
+  .followup-btn,
+  .auth-btn,
+  .suggestion-chip {
+    transition: none;
+  }
 }
