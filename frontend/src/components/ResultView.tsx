@@ -198,8 +198,7 @@ return (
     ))}
 
     {/* Currently streaming answer */}
-    {loading && (
-      <div className="result-layout">
+{loading && allMessages[allMessages.length - 1]?.role === "USER" && (      <div className="result-layout">
         <div className="result-main">
           <div className="answer-section">
             <div className="answer-label">
