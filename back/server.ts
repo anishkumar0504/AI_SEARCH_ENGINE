@@ -21,7 +21,13 @@ const PORT = process.env.PORT || 3000;
 // How long to keep cached search results (in milliseconds)
 // 1 hour = 60 * 60 * 1000
 const CACHE_TTL_MS = 60 * 60 * 1000;
-
+declare global {
+  namespace Express {
+    interface Request {
+      userId?: string;
+    }
+  }
+}
 // ─────────────────────────────────────────────
 // Helper: get search results, using DB cache
 // ─────────────────────────────────────────────
@@ -86,8 +92,7 @@ app.get("/conversations", middleware, async (req, res) => {
 // ─────────────────────────────────────────────
 app.get("/conversation/:conversationId", middleware, async (req, res) => {
   try {
-    const { conversationId } = req.params;
-
+const conversationId = req.params.conversationId as string;
     const conversation = await prisma.conversation.findUnique({
       where: { id: conversationId },
       include: {
@@ -231,7 +236,7 @@ app.post("/ask/followup", middleware, async (req, res) => {
 
     // Step 3: Build conversation history string to give LLM context
     const historyText = conversation.messages
-      .map((m) => `${m.role === "USER" ? "User" : "Assistant"}: ${m.content}`)
+.map((m: any) => `${m.role === "USER" ? "User" : "Assistant"}: ${m.content}`)
       .join("\n\n");
 
     // Step 4: Build prompt with history + new query
@@ -299,8 +304,7 @@ app.post("/ask/followup", middleware, async (req, res) => {
 // ─────────────────────────────────────────────
 app.delete("/conversation/:conversationId", middleware, async (req, res) => {
   try {
-    const { conversationId } = req.params;
-
+const conversationId = req.params.conversationId as string;
     const conversation = await prisma.conversation.findUnique({
       where: { id: conversationId },
     });
