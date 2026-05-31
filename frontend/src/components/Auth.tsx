@@ -12,7 +12,6 @@ export function Auth() {
           <span className="auth-logo-text">Nexus</span>
         </div>
         <p className="auth-tagline">AI-powered search, reimagined.</p>
-
         <div className="auth-buttons">
           <button className="auth-btn auth-btn--github" onClick={signInWithGithub}>
             <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">

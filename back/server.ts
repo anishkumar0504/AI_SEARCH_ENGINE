@@ -20,6 +20,7 @@ const PORT = process.env.PORT || 3000;
 
 // How long to keep cached search results (in milliseconds)
 // 1 hour = 60 * 60 * 1000
+
 const CACHE_TTL_MS = 60 * 60 * 1000;
 declare global {
   namespace Express {
@@ -32,6 +33,7 @@ declare global {
 app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
+
 // ─────────────────────────────────────────────
 // Helper: get search results, using DB cache
 // ─────────────────────────────────────────────
