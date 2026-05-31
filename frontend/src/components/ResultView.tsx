@@ -198,8 +198,8 @@ return (
     ))}
 
     {/* Currently streaming answer */}
-    {loading && (
-      <div className="result-layout">
+{loading && answer && !allMessages.some(m => m.role === "ASSISTANT" && m.content === answer) && (
+          <div className="result-layout">
         <div className="result-main">
           <div className="answer-section">
             <div className="answer-label">
