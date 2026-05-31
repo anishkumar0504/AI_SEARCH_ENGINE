@@ -64,8 +64,14 @@ export default function App() {
     user.email?.split("@")[0] ||
     "there";
 
-  const hasResult = !!(state.query && (state.answer || state.loading || state.error));
-
+const hasResult = !!(
+  state.query && (
+    state.answer ||
+    state.loading ||
+    state.error ||
+    state.allMessages.length > 0
+  )
+);
   return (
     <div className="app">
       <button

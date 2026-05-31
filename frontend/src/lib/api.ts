@@ -141,39 +141,43 @@ async function readStream(
   onSources: (sources: Source[]) => void,
   onFollowUps: (followUps: string[]) => void,
   onConversationId: (id: string) => void
-) {
+)  {
   const reader = res.body!.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
   let sourcesReceived = false;
+  let answerDone = false;
 
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
 
-    if (!sourcesReceived && buffer.includes("\n<SOURCES>\n")) {
-      const [answerPart, rest] = buffer.split("\n<SOURCES>\n");
-      const { answer, followUps } = parseStructuredAnswer(answerPart);
-      onChunk(answer);
-      onFollowUps(followUps);
+    // Stream answer progressively until sources marker appears
+    if (!sourcesReceived && !answerDone) {
+      if (buffer.includes("\n<SOURCES>\n")) {
+        const [answerPart, rest] = buffer.split("\n<SOURCES>\n");
+        const { answer, followUps } = parseStructuredAnswer(answerPart);
+        onChunk(answer);
+        onFollowUps(followUps);
+        answerDone = true;
 
-      if (rest && rest.includes("\n</SOURCES>\n")) {
-        const [sourcesJson, after] = rest.split("\n</SOURCES>\n");
-        try {
-          onSources(JSON.parse(sourcesJson.trim()));
-        } catch {
-          onSources([]);
+        if (rest && rest.includes("\n</SOURCES>\n")) {
+          const [sourcesJson, after] = rest.split("\n</SOURCES>\n");
+          try { onSources(JSON.parse(sourcesJson.trim())); }
+          catch { onSources([]); }
+          sourcesReceived = true;
+
+          const convMatch = (after || "").match(/<CONV_ID>(.+?)<\/CONV_ID>/);
+          if (convMatch) onConversationId(convMatch[1]);
         }
-        sourcesReceived = true;
-
-        // Parse CONV_ID if already in buffer
-        const convMatch = (after || "").match(/<CONV_ID>(.+?)<\/CONV_ID>/);
-        if (convMatch) onConversationId(convMatch[1]);
+      } else {
+        // ← THIS IS THE KEY FIX: stream partial answer progressively
+        const { answer } = parseStructuredAnswer(buffer);
+        onChunk(answer);
       }
     }
 
-    // CONV_ID might arrive after sources in a later chunk
     if (sourcesReceived && buffer.includes("<CONV_ID>")) {
       const convMatch = buffer.match(/<CONV_ID>(.+?)<\/CONV_ID>/);
       if (convMatch) onConversationId(convMatch[1]);
