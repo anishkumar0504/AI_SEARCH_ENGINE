@@ -10,7 +10,6 @@ const navigate = useNavigate();
   useEffect(() => {
     async function getInfo() {
       const { data } = await supabase.auth.getUser();
-
       if (data.user) {
         setUser(data.user);
       }else{
